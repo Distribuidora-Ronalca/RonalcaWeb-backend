@@ -1,11 +1,18 @@
 import { api } from "encore.dev/api";
 import { db } from "../database/database";
 
-export const getBrands = api(
-  { method: "GET", path: "/brands", expose: true },
+export const getAllBrands = api(
+  { method: "GET", path: "/brands/all", expose: true },
   async (): Promise<GetBrandsResponse> => {
     const brands = await db.selectFrom("Brands").selectAll().execute();
-    return { message: "Brands obtained successfully", brands };
+    const formattedBrands = brands.map((brand) => ({
+      id: brand.id,
+      description: brand.description,
+      logoImage: brand.logo_image,
+      isActive: brand.is_active,
+      name: brand.name,
+    }));
+    return { message: "Brands obtained successfully", brands: formattedBrands };
   }
 );
 
@@ -46,8 +53,8 @@ interface GetBrandsResponse {
   brands: {
     id: number;
     description: string;
-    logo_image: string;
-    is_active: boolean;
+    logoImage: string;
+    isActive: boolean;
     name: string;
   }[];
 }

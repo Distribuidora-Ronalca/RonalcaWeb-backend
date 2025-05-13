@@ -9,6 +9,76 @@ export const getAllProducts = api(
   }
 );
 
+export const getProductById = api(
+  { method: "GET", path: "/products/:id", expose: true },
+  async ({ id }: { id: number }): Promise<GetProductByIdResponse> => {
+    const product = await db
+      .selectFrom("Products")
+      .leftJoin("Models", "Products.model_id", "Models.id")
+      .leftJoin("Brands", "Products.brand_id", "Brands.id")
+      .leftJoin(
+        "ProductsInSpaces",
+        "Products.id",
+        "ProductsInSpaces.product_id"
+      )
+      .leftJoin("Spaces", "ProductsInSpaces.space_id", "Spaces.id")
+      .select([
+        "Products.id",
+        "Products.description",
+        "Products.is_active",
+        "Products.images",
+        "Products.name",
+        "Models.id as model_id",
+        "Models.name as model_name",
+        "Brands.id as brand_id",
+        "Brands.name as brand_name",
+        "Spaces.id as space_id",
+        "Spaces.name as space_name",
+        "Spaces.description as space_description",
+        "Spaces.image as space_image",
+      ])
+      .where("Products.id", "=", id)
+      .execute();
+
+    if (!product || product.length === 0) {
+      throw new Error("Product not found");
+    }
+
+    const spaces = product
+      .filter((row) => row.space_id !== null)
+      .map((row) => ({
+        id: row.space_id!,
+        name: row.space_name!,
+        description: row.space_description!,
+        image: row.space_image!,
+      }));
+
+    const formattedProduct = {
+      id: product[0].id!,
+      description: product[0].description!,
+      isActive: product[0].is_active!,
+      images: product[0].images,
+      model: {
+        id: product[0].model_id!,
+        name: product[0].model_name!,
+      },
+      brand: product[0].brand_id
+        ? {
+            id: product[0].brand_id,
+            name: product[0].brand_name!,
+          }
+        : null,
+      name: product[0].name!,
+      spaces: spaces,
+    };
+
+    return {
+      message: "Product obtained successfully",
+      product: formattedProduct,
+    };
+  }
+);
+
 export const getPaginatedProducts = api(
   { method: "GET", path: "/products", expose: true },
   async ({
@@ -21,9 +91,9 @@ export const getPaginatedProducts = api(
   }: {
     page: number;
     limit: number;
-    brand?: number;
-    model?: number;
-    space?: number;
+    brand?: string;
+    model?: string;
+    space?: string;
     name?: string;
   }): Promise<PaginatedResponse<Product>> => {
     return db.transaction().execute(async (trx) => {
@@ -35,6 +105,8 @@ export const getPaginatedProducts = api(
           "ProductsInSpaces.product_id"
         )
         .leftJoin("Spaces", "ProductsInSpaces.space_id", "Spaces.id")
+        .leftJoin("Models", "Products.model_id", "Models.id")
+        .leftJoin("Brands", "Products.brand_id", "Brands.id")
         .select([
           "Products.id",
           "Products.description",
@@ -43,6 +115,10 @@ export const getPaginatedProducts = api(
           "Products.model_id",
           "Products.brand_id",
           "Products.name",
+          "Models.id as model_id",
+          "Models.name as model_name",
+          "Brands.id as brand_id",
+          "Brands.name as brand_name",
           "Spaces.id as space_id",
           "Spaces.name as space_name",
           "Spaces.description as space_description",
@@ -52,13 +128,13 @@ export const getPaginatedProducts = api(
         .offset((page - 1) * limit);
 
       if (brand) {
-        query = query.where("Products.brand_id", "=", brand);
+        query = query.where("Brands.name", "=", brand);
       }
       if (model) {
-        query = query.where("Products.model_id", "=", model);
+        query = query.where("Models.name", "=", model);
       }
       if (space) {
-        query = query.where("Spaces.id", "=", space);
+        query = query.where("Spaces.name", "=", space);
       }
       if (name) {
         query = query.where("Products.name", "ilike", `%${name}%`);
@@ -74,9 +150,17 @@ export const getPaginatedProducts = api(
             description: row.description,
             is_active: row.is_active,
             images: row.images,
-            model_id: row.model_id,
-            brand_id: row.brand_id,
             name: row.name,
+            model: {
+              id: row.model_id,
+              name: row.model_name,
+            },
+            brand: row.brand_id
+              ? {
+                  id: row.brand_id,
+                  name: row.brand_name,
+                }
+              : null,
             spaces: [],
           });
         }
@@ -93,23 +177,43 @@ export const getPaginatedProducts = api(
 
       const products = Array.from(productsMap.values());
 
-      const totalItems = await db
+      let totalItemsQuery = await db
         .selectFrom("Products")
-        .select(({ fn }) => [fn.count("id").as("totalItems")])
-        .executeTakeFirst();
-      if (!totalItems) {
-        return {
-          message: "No products found",
-          paginate: { totalItems: 0, totalPages: 0, limit, page },
-          items: [],
-        };
+        .leftJoin(
+          "ProductsInSpaces",
+          "Products.id",
+          "ProductsInSpaces.product_id"
+        )
+        .leftJoin("Spaces", "ProductsInSpaces.space_id", "Spaces.id")
+        .leftJoin("Models", "Products.model_id", "Models.id")
+        .leftJoin("Brands", "Products.brand_id", "Brands.id")
+        .select(({ fn }) => [fn.count<number>("Products.id").as("totalItems")]);
+
+      if (brand) {
+        query = query.where("Brands.name", "=", brand);
       }
-      const totalPages = Math.ceil(Number(totalItems.totalItems) / limit);
+      if (model) {
+        query = query.where("Models.name", "=", model);
+      }
+      if (space) {
+        query = query.where("Spaces.name", "=", space);
+      }
+      if (name) {
+        query = query.where("Products.name", "ilike", `%${name}%`);
+      }
+
+      const totalItems = await totalItemsQuery.executeTakeFirst();
+
+      const totalPages = totalItems
+        ? Math.ceil(Number(totalItems.totalItems) / limit)
+        : 0;
+
+      console.log(totalItems?.totalItems);
 
       return {
         message: "Products obtained successfully",
         paginate: {
-          totalItems: Number(totalItems.totalItems),
+          totalItems: Number(totalItems?.totalItems),
           totalPages,
           limit,
           page,
@@ -166,15 +270,106 @@ export const createProduct = api(
     const formattedProduct = {
       id: product.id,
       description,
-      is_active,
+      isActive: is_active,
       images,
-      model_id,
-      brand_id,
+      modelId: model_id,
+      brandId: brand_id,
       name,
     };
     return {
       message: "Product created successfully",
       product: formattedProduct,
+    };
+  }
+);
+
+export const getRandomProducts = api(
+  { method: "GET", path: "/products/random/:limit", expose: true },
+  async ({ limit }: { limit: number }): Promise<GetRandomProductsResponse> => {
+    // Primero obtenemos los IDs aleatorios
+    const randomIds = await db
+      .selectFrom("Products")
+      .select("id")
+      .orderBy("id")
+      .limit(limit)
+      .execute();
+
+    if (randomIds.length === 0) {
+      return {
+        message: "No se encontraron productos",
+        products: [],
+      };
+    }
+
+    // Luego obtenemos los productos completos con esos IDs
+    const products = await db
+      .selectFrom("Products")
+      .leftJoin("Models", "Products.model_id", "Models.id")
+      .leftJoin("Brands", "Products.brand_id", "Brands.id")
+      .leftJoin(
+        "ProductsInSpaces",
+        "Products.id",
+        "ProductsInSpaces.product_id"
+      )
+      .leftJoin("Spaces", "ProductsInSpaces.space_id", "Spaces.id")
+      .select([
+        "Products.id",
+        "Products.description",
+        "Products.is_active",
+        "Products.images",
+        "Products.name",
+        "Models.id as model_id",
+        "Models.name as model_name",
+        "Brands.id as brand_id",
+        "Brands.name as brand_name",
+        "Spaces.id as space_id",
+        "Spaces.name as space_name",
+        "Spaces.description as space_description",
+        "Spaces.image as space_image",
+      ])
+      .where(
+        "Products.id",
+        "in",
+        randomIds.map((r) => r.id)
+      )
+      .execute();
+
+    const productsMap = new Map();
+    products.forEach((row) => {
+      if (!productsMap.has(row.id)) {
+        productsMap.set(row.id, {
+          id: row.id,
+          description: row.description,
+          isActive: row.is_active,
+          images: row.images,
+          name: row.name,
+          model: {
+            id: row.model_id!,
+            name: row.model_name!,
+          },
+          brand: row.brand_id
+            ? {
+                id: row.brand_id,
+                name: row.brand_name!,
+              }
+            : null,
+          spaces: [],
+        });
+      }
+
+      if (row.space_id) {
+        productsMap.get(row.id).spaces.push({
+          id: row.space_id,
+          name: row.space_name!,
+          description: row.space_description!,
+          image: row.space_image!,
+        });
+      }
+    });
+
+    return {
+      message: "Productos aleatorios obtenidos exitosamente",
+      products: Array.from(productsMap.values()),
     };
   }
 );
@@ -197,8 +392,14 @@ interface Product {
   description: string;
   is_active: boolean;
   images: string[];
-  model_id: number;
-  brand_id: number | null;
+  model: {
+    id: number;
+    name: string;
+  };
+  brand: {
+    id: number;
+    name: string;
+  } | null;
   name: string;
   spaces: {
     id: number;
@@ -222,10 +423,60 @@ interface CreateProductResponse {
   message: string;
   product: {
     description: string;
-    is_active: boolean;
+    isActive: boolean;
     images: string[];
-    model_id: number;
-    brand_id: number | null;
+    modelId: number;
+    brandId: number | null;
     name: string;
   };
+}
+
+interface GetProductByIdResponse {
+  message: string;
+  product: {
+    id: number;
+    description: string;
+    isActive: boolean;
+    images: string[];
+    model: {
+      id: number;
+      name: string;
+    };
+    brand: {
+      id: number;
+      name: string;
+    } | null;
+    name: string;
+    spaces: {
+      id: number;
+      name: string;
+      description: string;
+      image: string;
+    }[];
+  };
+}
+
+interface GetRandomProductsResponse {
+  message: string;
+  products: {
+    id: number;
+    description: string;
+    isActive: boolean;
+    images: string[];
+    name: string;
+    model: {
+      id: number;
+      name: string;
+    };
+    brand: {
+      id: number;
+      name: string;
+    } | null;
+    spaces: {
+      id: number;
+      name: string;
+      description: string;
+      image: string;
+    }[];
+  }[];
 }

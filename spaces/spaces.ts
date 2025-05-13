@@ -1,9 +1,9 @@
 import { api } from "encore.dev/api";
 import { db } from "../database/database";
 
-export const getSpaces = api(
-  { method: "GET", path: "/spaces", expose: true },
-  async (): Promise<GetSpacesResponse> => {
+export const getAllSpaces = api(
+  { method: "GET", path: "/spaces/all", expose: true },
+  async (): Promise<GetAllSpacesResponse> => {
     const spaces = await db.selectFrom("Spaces").selectAll().execute();
     return { message: "Spaces obtained successfully", spaces };
   }
@@ -37,7 +37,7 @@ export const createSpace = api(
   }
 );
 
-interface GetSpacesResponse {
+interface GetAllSpacesResponse {
   message: string;
   spaces: { id: number; description: string; image: string; name: string }[];
 }

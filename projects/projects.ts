@@ -1,8 +1,8 @@
 import { api } from "encore.dev/api";
 import { db } from "../database/database";
 
-export const getProjects = api(
-  { method: "GET", path: "/projects", expose: true },
+export const getAllProjects = api(
+  { method: "GET", path: "/projects/all", expose: true },
   async (): Promise<GetProjectsResponse> => {
     const projects = await db.selectFrom("Projects").selectAll().execute();
     return { message: "Projects obtained successfully", projects };
