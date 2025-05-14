@@ -23,6 +23,14 @@ jobs:
       - name: Install Encore CLI
         run: bash install.sh
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          standalone: true
+
+      - name: Install dependencies
+        run: pnpm install --prod
+
       - name: Log in to organization container registry
         run: docker login -u ${{ secrets.ORG_DOCKER_EMAIL }} -p ${{ secrets.ORG_DOCKER_PASSWORD }}
 
