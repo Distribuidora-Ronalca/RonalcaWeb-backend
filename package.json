@@ -11,7 +11,7 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "encore.dev": "^1.46.20",
+    "encore.dev": "^1.46.22",
     "kysely": "^0.28.1",
     "pg": "^8.15.5"
   },
