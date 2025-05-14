@@ -38,7 +38,7 @@ jobs:
         run: /home/runner/.encore/bin/encore build docker ronalca-web-backend
 
       - name: Tag Docker image
-        run: docker tag ronalca-web-backend daikone/ronalca:latest
+        run: docker tag ronalca-web-backend daikone/ronalca-web-backend:latest
 
       - name: Push Docker image
-        run: docker push daikone/ronalca:latest
+        run: docker push daikone/ronalca-web-backend:latest
