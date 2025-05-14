@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       encore.dev:
-        specifier: ^1.46.20
-        version: 1.46.20
+        specifier: ^1.46.22
+        version: 1.46.22
       kysely:
         specifier: ^0.28.1
         version: 0.28.1
@@ -36,8 +36,8 @@ packages:
   '@types/pg@8.11.13':
     resolution: {integrity: sha512-6kXByGkvRvwXLuyaWzsebs2du6+XuAB2CuMsuzP7uaihQahshVgSmB22Pmh0vQMkQ1h5+PZU0d+Di1o+WpVWJg==}
 
-  encore.dev@1.46.20:
-    resolution: {integrity: sha512-3YsRWvBLiXUK6IyqYlISkweF/aB3PlPMlTPtZcuXWvs+p0Of8DzswB1GJtQYDyqGrdixEMM6jacnC0BpwXrgIA==}
+  encore.dev@1.46.22:
+    resolution: {integrity: sha512-6DyAAAEtbvryCjWSKqXz2P+JVL5HUuGcIk8kJQoCJOzY1CWuvR97fpfY/TV0xArTP4anQ+2h/gS6I36mVGqhGg==}
     engines: {node: '>=18.0.0'}
 
   kysely@0.28.1:
@@ -152,7 +152,7 @@ snapshots:
       pg-protocol: 1.9.5
       pg-types: 4.0.2
 
-  encore.dev@1.46.20: {}
+  encore.dev@1.46.22: {}
 
   kysely@0.28.1: {}
 
