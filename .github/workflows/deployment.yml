@@ -1,0 +1,36 @@
+name: Build, Push and Deploy a Encore Docker Image to Organization Registry
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-push-deploy-image:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Encore CLI script
+        uses: sozo-design/curl@v1.0.2
+        with:
+          args: --output install.sh -L https://encore.dev/install.sh
+
+      - name: Install Encore CLI
+        run: bash install.sh
+
+      - name: Log in to organization container registry
+        run: docker login -u ${{ secrets.ORG_DOCKER_EMAIL }} -p ${{ secrets.ORG_DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: /home/runner/.encore/bin/encore build docker ronalca-web-backend
+
+      - name: Tag Docker image
+        run: docker tag ronalca-web-backend ronalca-web-backend:latest
+
+      - name: Push Docker image
+        run: docker push daikone/ronalca-web-backend:latest
