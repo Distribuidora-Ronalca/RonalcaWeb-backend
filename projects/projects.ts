@@ -1,5 +1,18 @@
 import { api } from "encore.dev/api";
-import { db } from "../database/database";
+import { database } from "../database/database";
+import { Pool } from "pg";
+import { Kysely, PostgresDialect } from "kysely";
+import { Database } from "../database/types";
+
+const dialect = new PostgresDialect({
+  pool: new Pool({
+    connectionString: database.connectionString
+  }),
+});
+
+export const db = new Kysely<Database>({
+  dialect,
+});
 
 export const getAllProjects = api(
   { method: "GET", path: "/projects/all", expose: true },

@@ -3,14 +3,14 @@ import { Database } from "./types";
 import { Pool } from "pg";
 import { Kysely, PostgresDialect } from "kysely";
 
-const database = new SQLDatabase("database", {
+export const database = new SQLDatabase("database", {
   migrations: "./migrations",
 });
 
-const connStr = database.connectionString;
+const connectionString = database.connectionString;
 
 const dialect = new PostgresDialect({
-  pool: new Pool({ connectionString: connStr }),
+  pool: new Pool({connectionString}),
 });
 
 export const db = new Kysely<Database>({
