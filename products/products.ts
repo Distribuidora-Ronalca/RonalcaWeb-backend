@@ -187,19 +187,25 @@ export const getPaginatedProducts = api(
         .leftJoin("Spaces", "ProductsInSpaces.space_id", "Spaces.id")
         .leftJoin("Models", "Products.model_id", "Models.id")
         .leftJoin("Brands", "Products.brand_id", "Brands.id")
-        .select(({ fn }) => [fn.count<number>("Products.id").as("totalItems")]);
+        .select(({ fn }) => [
+          fn.count<number>("Products.id").distinct().as("totalItems"),
+        ]);
 
       if (brand) {
-        query = query.where("Brands.name", "=", brand);
+        totalItemsQuery = totalItemsQuery.where("Brands.name", "=", brand);
       }
       if (model) {
-        query = query.where("Models.name", "=", model);
+        totalItemsQuery = totalItemsQuery.where("Models.name", "=", model);
       }
       if (space) {
-        query = query.where("Spaces.name", "=", space);
+        totalItemsQuery = totalItemsQuery.where("Spaces.name", "=", space);
       }
       if (name) {
-        query = query.where("Products.name", "ilike", `%${name}%`);
+        totalItemsQuery = totalItemsQuery.where(
+          "Products.name",
+          "ilike",
+          `%${name}%`
+        );
       }
 
       const totalItems = await totalItemsQuery.executeTakeFirst();
@@ -207,8 +213,6 @@ export const getPaginatedProducts = api(
       const totalPages = totalItems
         ? Math.ceil(Number(totalItems.totalItems) / limit)
         : 0;
-
-      console.log(totalItems?.totalItems);
 
       return {
         message: "Products obtained successfully",
